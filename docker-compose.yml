@@ -1,0 +1,57 @@
+# Local dev infrastructure for CreatorRAG.
+# Brings up the three stateful services the app needs so the whole pipeline
+# runs end-to-end with a single `docker compose up` and zero cloud accounts.
+#
+# For the graded run you can point DATABASE_URL at Supabase instead and drop
+# the `postgres` service — the app only ever talks plain Postgres.
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis_data:/data
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    restart: unless-stopped
+    ports:
+      - "6333:6333" # REST + dashboard (http://localhost:6333/dashboard)
+      - "6334:6334" # gRPC
+    healthcheck:
+      # qdrant image has no curl/wget; use the bash /dev/tcp probe instead
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/6333' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: creatorrag
+      POSTGRES_PASSWORD: creatorrag
+      POSTGRES_DB: creatorrag
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U creatorrag"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  redis_data:
+  qdrant_data:
+  postgres_data:

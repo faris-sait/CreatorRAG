@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Env / secrets
+.env
+.env.local
+*.local
+
+# Node / Next
+node_modules/
+.next/
+out/
+npm-debug.log*
+.DS_Store
+
+# Runtime artifacts
+backend/tmp/
+*.log
+
+# Keep fixture metadata, ignore large cached audio blobs by default
+# (commit a small sample audio if you want a fully offline demo)
+backend/fixtures/audio/*.mp3
+backend/fixtures/audio/*.m4a
+backend/fixtures/audio/*.wav
