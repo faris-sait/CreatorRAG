@@ -1,0 +1,23 @@
+{
+  "_comment": "Cached Instagram Reel used as the demo kill-switch when Apify is unavailable or USE_FIXTURES=true. Replace with a freshly scraped reel for your own demo (see backend/fixtures/README.md). This is cached INPUT data, not hard-coded output.",
+  "title": "3 morning habits that changed my productivity",
+  "creator": "thefocusedfounder",
+  "follower_count": 248000,
+  "views": 1840000,
+  "likes": 132400,
+  "comments": 2870,
+  "hashtags": ["productivity", "morningroutine", "founder", "habits", "discipline"],
+  "upload_date": "2026-04-12",
+  "duration": 47,
+  "thumbnail": null,
+  "transcript_segments": [
+    {"start": 0.0, "end": 3.4, "text": "Stop hitting snooze. I'm serious — these three habits doubled my output."},
+    {"start": 3.4, "end": 9.1, "text": "Habit one: I write down my single most important task the night before, not in the morning."},
+    {"start": 9.1, "end": 15.6, "text": "When you wake up, decision fatigue is real. Removing that one choice changes everything."},
+    {"start": 15.6, "end": 22.0, "text": "Habit two: no phone for the first hour. The world can wait sixty minutes, I promise."},
+    {"start": 22.0, "end": 28.8, "text": "I replaced doom scrolling with ten minutes of writing and a short walk outside."},
+    {"start": 28.8, "end": 35.5, "text": "Habit three: I time-box deep work into a single ninety minute block before any meetings."},
+    {"start": 35.5, "end": 41.2, "text": "Ninety minutes of focus beats eight hours of being constantly interrupted."},
+    {"start": 41.2, "end": 47.0, "text": "Try one of these tomorrow and comment which one. Follow for more founder systems."}
+  ]
+}
