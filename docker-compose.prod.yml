@@ -1,0 +1,127 @@
+# Production stack for the DigitalOcean droplet.
+#
+# The three stateful services + the app (API + arq worker) + Caddy for automatic
+# HTTPS, all in one network. Run with:
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   (or: make prod-up)
+#
+# Unlike the dev compose, Postgres/Redis/Qdrant ports are NOT published to the
+# host — services talk over the internal docker network and only Caddy (80/443)
+# is exposed to the internet. (Docker-published ports bypass ufw, so the safest
+# move is to simply not publish them.)
+#
+# Required in .env (hosts use the docker service names, not localhost):
+#   POSTGRES_PASSWORD, DATABASE_URL, REDIS_URL, QDRANT_URL,
+#   BACKEND_CORS_ORIGINS, plus all the API keys.
+
+# Cap container log growth so a long-running droplet never fills its disk.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      # qdrant image ships no curl/wget; probe the port with bash /dev/tcp
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/6333' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-creatorrag}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-creatorrag}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-creatorrag}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build: ./backend
+    image: creatorrag-backend:latest
+    restart: unless-stopped
+    logging: *default-logging
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      # /health is a pure liveness probe (no external calls). python is in the
+      # image, so no need to add curl.
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # No published ports — Caddy reaches it as http://api:8000 internally.
+
+  worker:
+    build: ./backend
+    image: creatorrag-backend:latest
+    restart: unless-stopped
+    logging: *default-logging
+    command: arq app.pipeline.worker.WorkerSettings
+    env_file: .env
+    # Give in-flight ingests a moment to finish on deploy/restart before SIGKILL.
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  redis_data:
+  qdrant_data:
+  postgres_data:
+  caddy_data:
+  caddy_config:

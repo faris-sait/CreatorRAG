@@ -1,4 +1,7 @@
-.PHONY: infra infra-down api worker web test install
+.PHONY: infra infra-down api worker web test install \
+        prod-up prod-down prod-logs prod-ps prod-restart prod-deploy prod-db prod-db-reset
+
+COMPOSE_PROD = docker compose -f docker-compose.prod.yml
 
 # Bring up Redis + Qdrant + Postgres
 infra:
@@ -40,3 +43,41 @@ db:
 db-reset:
 	docker compose exec postgres psql -U creatorrag -d creatorrag -c "TRUNCATE pairs, videos CASCADE;"
 	@echo "Postgres cleared. Restart the API/worker to recreate the empty Qdrant collection, or run db-show."
+
+# ── Production (droplet) ──────────────────────────────────────────────
+# Full containerised stack (DBs + API + worker + Caddy/HTTPS).
+
+# Build + start everything in the background
+prod-up:
+	$(COMPOSE_PROD) up -d --build
+
+# Stop and remove the stack (volumes are kept)
+prod-down:
+	$(COMPOSE_PROD) down
+
+# Tail the app + proxy logs
+prod-logs:
+	$(COMPOSE_PROD) logs -f api worker caddy
+
+# Status of every service
+prod-ps:
+	$(COMPOSE_PROD) ps
+
+# Restart just the app (e.g. after an env change, no rebuild)
+prod-restart:
+	$(COMPOSE_PROD) restart api worker
+
+# Pull latest code and roll it out
+prod-deploy:
+	git pull
+	$(COMPOSE_PROD) up -d --build
+	$(COMPOSE_PROD) ps
+
+# Interactive psql inside the prod postgres container
+prod-db:
+	$(COMPOSE_PROD) exec postgres psql -U creatorrag -d creatorrag
+
+# Wipe ingested data on the droplet (fresh demo slate)
+prod-db-reset:
+	$(COMPOSE_PROD) exec postgres psql -U creatorrag -d creatorrag -c "TRUNCATE pairs, videos CASCADE;"
+	@echo "Postgres cleared. Restart api/worker to recreate the empty Qdrant collection."
