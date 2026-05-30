@@ -35,14 +35,35 @@ class _ApifyWithFixtureFallback(VideoProvider):
 
 
 class _YouTubeApifyWithFallback(VideoProvider):
-    """Apify-first YouTube; fall back to the Data API / yt-dlp path on failure."""
+    """Apify-first YouTube, with a transcript-aware fallback to yt-dlp/Whisper.
+
+    Two failure modes to cover:
+      1. Apify errors outright → fall back.
+      2. Apify *succeeds* but the video has no subtitles → the result has no
+         transcript and no audio source, so Whisper has nothing to work on.
+         Fall back to YouTubeProvider, which downloads the audio (yt-dlp) and
+         lets the pipeline transcribe it.
+    """
 
     async def fetch(self, url: str) -> VideoData:
         try:
-            return await YouTubeApifyProvider().fetch(url)
+            data = await YouTubeApifyProvider().fetch(url)
         except Exception as e:  # noqa: BLE001
-            log.warning("Apify YouTube failed (%s); falling back to Data API/yt-dlp", e)
+            log.warning("Apify YouTube failed (%s); falling back to yt-dlp/Whisper", e)
             return await YouTubeProvider().fetch(url)
+
+        # Apify gave metadata but no subtitles and no audio to transcribe — the
+        # yt-dlp path can still download the audio for Whisper.
+        if not data.transcript_segments and not data.audio_path and not data.audio_url:
+            log.warning(
+                "Apify YouTube returned no transcript for %s; falling back to "
+                "yt-dlp/Whisper for audio", url,
+            )
+            try:
+                return await YouTubeProvider().fetch(url)
+            except Exception as e:  # noqa: BLE001
+                log.warning("yt-dlp fallback also failed (%s); using Apify metadata", e)
+        return data
 
 
 def get_provider(url: str, youtube_exact: bool = False) -> VideoProvider:
