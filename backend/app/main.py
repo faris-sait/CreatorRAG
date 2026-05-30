@@ -12,7 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import db, qdrant_store
 from .config import settings
+from .embeddings import warmup as embed_warmup
 from .pipeline.queue import close_queue
+from .rag.agent import warmup_llm
 from .routes import chat, health, videos
 
 
@@ -20,6 +22,10 @@ from .routes import chat, health, videos
 async def lifespan(app: FastAPI):
     await db.init_pool()
     await qdrant_store.ensure_collection()
+    # Warm the LLM + embedding clients so the first chat request doesn't pay
+    # cold-start latency (client construction + TLS handshake).
+    warmup_llm()
+    await embed_warmup()
     yield
     await close_queue()
     await db.close_pool()

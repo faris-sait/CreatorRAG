@@ -23,8 +23,7 @@ from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
 from .. import db
 from ..config import settings
 from ..keyring import is_quota_error, keyring
-from .agent import build_agent
-from .tools import make_retriever_tool
+from .agent import build_graph
 
 
 def _sse(event: str, data: dict) -> str:
@@ -79,7 +78,7 @@ async def chat_stream(
     slot_map = {"A": pair["a_video_id"], "B": pair["b_video_id"]}
     # Replay bounded conversation history (persistent memory).
     history = await db.get_recent_messages(session_id, settings.chat_history_messages)
-    base_messages = _history_to_messages(history) + [HumanMessage(content=message)]
+    history_messages = _history_to_messages(history)
 
     try:
         keys = keyring.ordered_from_next()
@@ -89,21 +88,23 @@ async def chat_stream(
 
     last_err: Exception | None = None
     for idx, key in enumerate(keys):
-        collector: list[dict] = []  # reset per attempt; emitted only on success
-        tool = make_retriever_tool(slot_map, collector)
-        agent = build_agent(tool, video_a, video_b, key)
+        # Fresh single-pass retrieve→generate graph per key attempt. Retrieval
+        # re-runs on failover, but that's only ~0.2s and only on the rare
+        # quota-exhausted path.
+        graph = build_graph(video_a, video_b, slot_map, key)
         streamed_any = False
         answer = ""
         final_state = None
         try:
-            async for mode, chunk in agent.astream(
-                {"messages": base_messages}, stream_mode=["messages", "values"]
+            async for mode, chunk in graph.astream(
+                {"question": message, "history": history_messages},
+                stream_mode=["messages", "values"],
             ):
                 if mode == "messages":
                     msg, meta = chunk
                     if (
                         isinstance(msg, AIMessageChunk)
-                        and meta.get("langgraph_node") == "agent"
+                        and meta.get("langgraph_node") == "generate"
                         and msg.content
                     ):
                         text = _text_of(msg.content)
@@ -125,7 +126,8 @@ async def chat_stream(
             if answer:
                 await db.save_message(session_id, "assistant", answer)
 
-            yield _sse("sources", {"sources": _dedup_sources(collector)})
+            sources = _dedup_sources(final_state.get("citations", []) if final_state else [])
+            yield _sse("sources", {"sources": sources})
             yield _sse("done", {})
             return  # success
         except Exception as e:  # noqa: BLE001

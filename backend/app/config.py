@@ -31,7 +31,11 @@ class Settings(BaseSettings):
     google_api_key_4: str = ""
     google_api_key_5: str = ""
     google_api_keys: str = ""  # optional comma-separated list
-    llm_model: str = "gemini-2.5-flash"
+    # flash-lite: same 2.5 generation, materially lower latency than 2.5-flash
+    # (less "thinking" overhead) with very close quality for short-form Q&A.
+    llm_model: str = "gemini-2.5-flash-lite"
+    # Cap answer length — main latency lever (generation time scales with tokens).
+    llm_max_output_tokens: int = 512
     embed_model: str = "models/gemini-embedding-001"
     embed_dim: int = 768
 

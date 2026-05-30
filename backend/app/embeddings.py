@@ -83,3 +83,19 @@ def embed_documents(texts: Sequence[str]) -> list[list[float]]:
 def embed_query(text: str) -> list[float]:
     """Embed a single user question for search."""
     return _embed([text], "RETRIEVAL_QUERY")[0]
+
+
+async def warmup() -> None:
+    """Construct the genai client + warm the TLS/HTTP connection at startup so
+    the first real query doesn't pay cold-start. Best-effort: never blocks or
+    fails app startup. Costs one tiny embedding request per worker boot."""
+    import asyncio
+    import logging
+
+    if not keyring:
+        return
+    try:
+        await asyncio.to_thread(embed_query, "warmup")
+        logging.getLogger(__name__).info("embedding client warmed")
+    except Exception as e:  # noqa: BLE001
+        logging.getLogger(__name__).warning("embedding warmup skipped: %s", e)
