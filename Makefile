@@ -27,3 +27,16 @@ web:
 # Backend tests
 test:
 	cd backend && . .venv/bin/activate && pytest -q
+
+# Inspect the database (no psql needed)
+db-show:
+	cd backend && . .venv/bin/activate && python -m scripts.show_db
+
+# Open an interactive psql shell inside the postgres container
+db:
+	docker compose exec postgres psql -U creatorrag -d creatorrag
+
+# Wipe all ingested data (fresh slate for a demo)
+db-reset:
+	docker compose exec postgres psql -U creatorrag -d creatorrag -c "TRUNCATE pairs, videos CASCADE;"
+	@echo "Postgres cleared. Restart the API/worker to recreate the empty Qdrant collection, or run db-show."
