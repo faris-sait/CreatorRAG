@@ -1,0 +1,19 @@
+# Tooling config (ruff + mypy). Dependencies stay in requirements*.txt.
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "E501",  # line length — not worth churn here
+    "B008",  # function call in arg default — FastAPI Depends/Query/Header idiom
+]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+check_untyped_defs = false
+warn_unused_ignores = false
+# Lenient: catch obvious mistakes without blocking on third-party stubs.

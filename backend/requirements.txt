@@ -8,7 +8,13 @@ httpx>=0.27,<0.29
 
 # ── Data stores ──
 asyncpg>=0.30,<0.31
-qdrant-client>=1.12,<2
+# pin to the same minor as the qdrant server image in docker-compose.yml
+qdrant-client>=1.12,<1.13
+# protobuf<6 is required by the google-generativeai stack (gemini); pin the
+# grpcio-tools that qdrant-client pulls to a protobuf-5-compatible release so
+# the whole tree resolves cleanly.
+protobuf>=5.26.1,<6
+grpcio-tools>=1.66,<1.68
 redis>=5.2,<6
 arq>=0.26,<0.27
 
