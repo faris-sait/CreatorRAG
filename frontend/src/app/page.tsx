@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import VideoCard from "@/components/VideoCard";
 import ChatPanel from "@/components/ChatPanel";
-import Scoreboard from "@/components/Scoreboard";
 import { getPairStatus, submitVideos } from "@/lib/api";
 import type { PairStatus } from "@/lib/types";
 
@@ -152,9 +151,6 @@ export default function Home() {
           {error}
         </p>
       )}
-
-      {/* Head-to-head engagement comparison (self-hides until both ready) */}
-      <Scoreboard videoA={status?.video_a ?? null} videoB={status?.video_b ?? null} />
 
       {/* Arena */}
       <div className="grid flex-1 grid-cols-1 gap-5 lg:grid-cols-[1fr_1fr_minmax(380px,440px)]">
