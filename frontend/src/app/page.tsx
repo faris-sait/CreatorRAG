@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import VideoCard from "@/components/VideoCard";
 import ChatPanel from "@/components/ChatPanel";
+import Scoreboard from "@/components/Scoreboard";
 import { getPairStatus, submitVideos } from "@/lib/api";
 import type { PairStatus } from "@/lib/types";
+
+const GITHUB_URL = "https://github.com/faris-sait/CreatorRAG";
+const ARCHITECTURE_URL = "/architecture.html";
 
 // Placeholders only — inputs start empty so pasted URLs can't get glued onto a
 // pre-filled value. Everything downstream is computed dynamically.
@@ -87,11 +91,17 @@ export default function Home() {
             Creator<span className="text-accent">RAG</span>
           </h1>
         </div>
-        <p className="max-w-sm text-sm leading-relaxed text-muted">
-          Pit a <span className="text-a">YouTube</span> video against an{" "}
-          <span className="text-b">Instagram Reel</span> — real metrics, transcripts,
-          and a chat that cites its sources.
-        </p>
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:max-w-sm sm:items-end">
+          <nav className="flex flex-wrap items-center gap-2">
+            <NavLink href={ARCHITECTURE_URL}>Architecture</NavLink>
+            <NavLink href={GITHUB_URL}>GitHub ↗</NavLink>
+          </nav>
+          <p className="text-sm leading-relaxed text-muted sm:text-right">
+            Pit a <span className="text-a">YouTube</span> video against an{" "}
+            <span className="text-b">Instagram Reel</span> — real metrics, transcripts,
+            and a chat that cites its sources.
+          </p>
+        </div>
       </header>
 
       {/* Submit console */}
@@ -143,11 +153,14 @@ export default function Home() {
         </p>
       )}
 
+      {/* Head-to-head engagement comparison (self-hides until both ready) */}
+      <Scoreboard videoA={status?.video_a ?? null} videoB={status?.video_b ?? null} />
+
       {/* Arena */}
       <div className="grid flex-1 grid-cols-1 gap-5 lg:grid-cols-[1fr_1fr_minmax(380px,440px)]">
         <VideoCard slot="A" video={status?.video_a ?? null} onRetry={analyze} />
         <VideoCard slot="B" video={status?.video_b ?? null} onRetry={analyze} />
-        <div className="min-h-[620px] lg:h-auto">
+        <div className="min-h-[480px] lg:h-auto">
           <ChatPanel
             pairId={pairId}
             sessionId={sessionId}
@@ -158,7 +171,35 @@ export default function Home() {
           />
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="rise mt-1 flex flex-wrap items-center justify-between gap-3 border-t border-border-soft pt-5 text-xs text-faint">
+        <span>
+          Built for <span className="text-muted">CreatorJoy</span> · YouTube vs Instagram Reel
+        </span>
+        <div className="flex gap-4">
+          <a href={ARCHITECTURE_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-text">
+            Architecture
+          </a>
+          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-text">
+            GitHub
+          </a>
+        </div>
+      </footer>
     </main>
+  );
+}
+
+function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-muted transition hover:border-[color:var(--accent)] hover:text-text"
+    >
+      {children}
+    </a>
   );
 }
 

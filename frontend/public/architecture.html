@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CreatorRAG · System Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=Spectral:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e14;
+    --paper:#0f1621;
+    --paper2:#121b29;
+    --ink:#e2e9f2;
+    --muted:#7d8aa0;
+    --faint:#4a5568;
+    --line:#1d2939;
+    --grid:rgba(96,140,190,.06);
+    --gridb:rgba(96,140,190,.11);
+    /* signals */
+    --amber:#ffb849;
+    --cyan:#3dd6d0;
+    --green:#6ee787;
+    --magenta:#ff6b9d;
+    --violet:#9d8cff;
+    --red:#ff6b6b;
+    --blue:#4f9dff;
+    /* service mapping */
+    --user:var(--blue);
+    --api:var(--violet);
+    --queue:var(--red);
+    --apify:var(--amber);
+    --groq:var(--green);
+    --gemini:var(--cyan);
+    --store:var(--magenta);
+    --lg:#ffd24a;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --disp:'Big Shoulders Display',Impact,sans-serif;
+    --serif:'Spectral',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:var(--serif);font-weight:400;font-size:16px;line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      linear-gradient(var(--grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px),
+      linear-gradient(var(--gridb) 1px,transparent 1px),
+      linear-gradient(90deg,var(--gridb) 1px,transparent 1px);
+    background-size:28px 28px,28px 28px,140px 140px,140px 140px;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(120% 80% at 50% -10%,transparent 40%,rgba(0,0,0,.55) 100%);
+  }
+  .wrap{max-width:1140px;margin:0 auto;padding:0 26px;position:relative;z-index:1}
+  a{color:var(--cyan);text-decoration:none}
+
+  /* ---- mono helpers ---- */
+  .mono{font-family:var(--mono)}
+  .ref{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase}
+  .kbd{font-family:var(--mono);font-size:.82em;background:#0b121c;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--amber)}
+
+  /* ============ HERO ============ */
+  header.hero{
+    position:relative;padding:70px 0 40px;border-bottom:1px solid var(--line);
+    overflow:hidden;
+  }
+  .hero .corner{position:absolute;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.15em}
+  .hero .corner.tl{top:18px;left:26px}
+  .hero .corner.tr{top:18px;right:26px;text-align:right}
+  .hero .corner.br{bottom:14px;right:26px}
+  .hero h1{
+    font-family:var(--disp);font-weight:900;font-size:clamp(58px,12vw,150px);
+    line-height:.82;letter-spacing:-.01em;margin:18px 0 0;
+    background:linear-gradient(170deg,#ffffff 10%,#bcd2ee 50%,#5e7da6 92%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-transform:uppercase;
+  }
+  .hero h1 .em{display:block;color:transparent;background:linear-gradient(170deg,var(--amber),#ff8a3d);-webkit-background-clip:text;background-clip:text;}
+  .hero .lede{font-size:clamp(17px,2.4vw,22px);max-width:680px;color:var(--muted);margin:22px 0 0;font-weight:300}
+  .hero .lede b{color:var(--ink);font-weight:500}
+  .stamp{
+    display:inline-flex;gap:14px;align-items:center;margin-top:30px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:12px;color:var(--muted);
+  }
+  .stamp span{border:1px solid var(--line);border-radius:999px;padding:6px 13px;background:rgba(15,22,33,.6)}
+  .stamp span b{color:var(--green);font-weight:600}
+
+  /* reveal animation */
+  .rv{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+  .rv.in{opacity:1;transform:none}
+  .hero .rv{transition-delay:calc(var(--i,0)*90ms)}
+
+  /* ============ SECTION TITLES ============ */
+  section{padding:64px 0 8px}
+  .titleblock{display:flex;align-items:flex-end;gap:18px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:30px}
+  .titleblock .no{font-family:var(--disp);font-weight:800;font-size:clamp(40px,7vw,76px);line-height:.8;color:var(--line);-webkit-text-stroke:1px var(--faint)}
+  .titleblock .tt{flex:1}
+  .titleblock h2{font-family:var(--disp);font-weight:800;font-size:clamp(26px,4.5vw,46px);text-transform:uppercase;letter-spacing:-.01em;margin:0;line-height:.95}
+  .titleblock p{margin:6px 0 0;color:var(--muted);font-size:15px;max-width:720px}
+
+  /* ============ LEGEND ============ */
+  .legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .legend .it{background:var(--paper);padding:13px 15px;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .legend .it b{color:var(--ink);font-weight:500;font-size:12.5px}
+  .swatch{width:11px;height:11px;border-radius:3px;flex:none;box-shadow:0 0 12px -1px currentColor}
+
+  /* ============ FLOW NODES ============ */
+  .flow{display:flex;flex-direction:column;gap:0}
+  .node{
+    position:relative;background:linear-gradient(180deg,var(--paper),var(--paper2));
+    border:1px solid var(--line);border-left:3px solid var(--c,var(--line));
+    border-radius:13px;padding:17px 20px 17px 22px;
+    display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;
+    transition:transform .25s,border-color .25s,box-shadow .25s;
+  }
+  .node:hover{transform:translateX(5px);box-shadow:-7px 0 0 -3px var(--c,var(--line)),0 14px 40px -22px #000}
+  .node .lead{display:flex;align-items:center;gap:7px;margin-bottom:7px;flex-wrap:wrap}
+  .node .tag{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--c,var(--ink));border:1px solid color-mix(in srgb,var(--c,var(--line)) 45%,transparent);padding:2px 8px;border-radius:6px;background:color-mix(in srgb,var(--c,var(--line)) 9%,transparent)}
+  .node .num{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .node h3{margin:0 0 3px;font-family:var(--serif);font-weight:500;font-size:18.5px;letter-spacing:-.01em}
+  .node .body{color:var(--muted);font-size:14.5px;line-height:1.6}
+  .node .body b{color:var(--ink);font-weight:500}
+  .node .body code{font-family:var(--mono);font-size:.84em;color:var(--amber);background:#0b121c;padding:1px 5px;border-radius:4px}
+
+  /* timing gauge */
+  .gauge{font-family:var(--mono);text-align:right;flex:none;min-width:96px}
+  .gauge .v{font-size:23px;font-weight:600;color:var(--c,var(--ink));line-height:1;letter-spacing:-.02em}
+  .gauge .v small{font-size:12px;color:var(--muted);font-weight:400}
+  .gauge .l{font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin-top:5px}
+  .gauge.free .v{color:var(--green)}
+
+  .arrow{align-self:center;display:flex;flex-direction:column;align-items:center;color:var(--faint);padding:7px 0}
+  .arrow .ln{width:1px;height:13px;background:linear-gradient(var(--faint),transparent)}
+  .arrow .tx{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--faint);margin:3px 0}
+  .arrow .ar{font-size:13px;line-height:1;color:var(--faint)}
+
+  /* branch */
+  .branch{border:1px dashed var(--line);border-radius:13px;background:repeating-linear-gradient(135deg,transparent,transparent 9px,rgba(255,184,73,.018) 9px,rgba(255,184,73,.018) 18px),var(--paper);padding:16px 18px;margin:2px 0}
+  .branch .bh{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--amber);margin-bottom:13px}
+  .branch .opt{display:grid;grid-template-columns:118px 1fr auto;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+  .branch .opt:first-of-type{border-top:none}
+  .prio{font-family:var(--mono);font-size:10.5px;font-weight:600;text-align:center;padding:6px 4px;border-radius:7px;line-height:1.3}
+  .prio.a{background:rgba(110,231,135,.1);color:var(--green);border:1px solid rgba(110,231,135,.3)}
+  .prio.b{background:rgba(255,107,107,.1);color:var(--red);border:1px solid rgba(255,107,107,.3)}
+  .branch .opt .d{color:var(--muted);font-size:14px}
+  .branch .opt .d b{color:var(--ink);font-weight:500}
+  .branch .opt .g{font-family:var(--mono);font-size:13px;text-align:right;white-space:nowrap}
+
+  /* LangGraph container */
+  .lgbox{border:1.5px solid color-mix(in srgb,var(--lg) 55%,transparent);border-radius:18px;background:linear-gradient(180deg,rgba(255,210,74,.05),var(--paper) 30%);padding:20px;margin:2px 0;position:relative}
+  .lgbox::before{content:"⚙ LANGGRAPH";position:absolute;top:-10px;left:20px;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--lg);background:var(--bg);padding:0 9px}
+  .lgbox .hint{color:var(--muted);font-size:14px;margin:6px 0 16px;padding-left:2px}
+  .lgbox .hint b{color:var(--ink);font-weight:500}
+
+  /* ============ LATENCY BUDGET BAR ============ */
+  .budget{border:1px solid var(--line);border-radius:14px;background:var(--paper);padding:20px 22px;margin-bottom:26px}
+  .budget .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+  .budget .top .ttl{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .budget .top .total{font-family:var(--disp);font-weight:800;font-size:34px;color:var(--ink);line-height:1}
+  .budget .top .total small{font-size:15px;color:var(--muted);font-family:var(--mono);font-weight:400}
+  .bar{display:flex;height:30px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#0b121c}
+  .bar .seg{height:100%;width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10.5px;color:#0a0e14;font-weight:600;white-space:nowrap;overflow:hidden}
+  .bar.go .seg{}
+  .blegend{display:flex;gap:18px;flex-wrap:wrap;margin-top:13px;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  .blegend .bi{display:flex;align-items:center;gap:7px}
+  .blegend .bi b{color:var(--ink);font-weight:500}
+
+  /* ============ GENERIC GRID CARDS ============ */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+  .card{background:linear-gradient(180deg,var(--paper),var(--paper2));border:1px solid var(--line);border-radius:13px;padding:18px;transition:transform .25s,border-color .25s}
+  .card:hover{transform:translateY(-4px);border-color:var(--faint)}
+  .card .ic{font-size:20px;display:block;margin-bottom:9px}
+  .card h3{margin:0 0 6px;font-family:var(--mono);font-size:13.5px;font-weight:600;letter-spacing:.01em;color:var(--ink)}
+  .card p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+  .card .save{color:var(--green);font-weight:500}
+  .card.kpi{border-left:3px solid var(--c,var(--amber))}
+  .card.kpi .big{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--c,var(--amber));letter-spacing:-.02em}
+
+  /* ============ SERVICE TABLE ============ */
+  .svc{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:13px;overflow:hidden}
+  .svc tr{border-bottom:1px solid var(--line)}
+  .svc tr:last-child{border-bottom:none}
+  .svc td{padding:14px 15px;vertical-align:top;font-size:14.5px;color:var(--muted)}
+  .svc td:first-child{white-space:nowrap;width:1%}
+  .svc td b{color:var(--ink)}
+  .chip{font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;color:#0a0e14;letter-spacing:.03em}
+
+  /* ============ DECISIONS / PARAMS ============ */
+  .params{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px}
+  .params th{text-align:left;padding:10px 12px;color:var(--faint);font-weight:500;font-size:11px;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--line)}
+  .params td{padding:10px 12px;border-bottom:1px solid var(--line);color:var(--muted)}
+  .params td:first-child{color:var(--amber)}
+  .params td:nth-child(2){color:var(--ink);white-space:nowrap}
+  .params tr:hover td{background:rgba(96,140,190,.04)}
+
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:780px){.twocol{grid-template-columns:1fr}.node{grid-template-columns:1fr}.gauge{text-align:left}.branch .opt{grid-template-columns:1fr;gap:6px}.titleblock{gap:12px}}
+
+  .deco{display:flex;flex-direction:column;gap:11px}
+  .deco .step{display:flex;gap:13px;align-items:flex-start}
+  .deco .step .b{font-family:var(--mono);color:var(--lg);font-size:13px;flex:none;width:30px}
+  .deco .step .t{color:var(--muted);font-size:14.5px}
+  .deco .step .t b{color:var(--ink);font-weight:500}
+
+  .note{border:1px solid color-mix(in srgb,var(--cyan) 30%,transparent);background:linear-gradient(180deg,rgba(61,214,208,.06),transparent);border-radius:12px;padding:16px 18px;color:#bfeae8;font-size:14.5px;margin-top:20px}
+  .note b{color:#eafffe}
+
+  footer{margin-top:70px;border-top:1px solid var(--line);padding:30px 0 60px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--faint)}
+  footer .big{font-family:var(--disp);font-weight:800;font-size:30px;color:var(--line);-webkit-text-stroke:1px var(--faint);letter-spacing:.02em;margin-bottom:8px;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="wrap">
+    <div class="corner tl rv" style="--i:0">CREATORRAG // SYSTEM BLUEPRINT</div>
+    <div class="corner tr rv" style="--i:0">REV 2026.05.30<br>SHEET 1 / 1</div>
+    <div class="ref rv" style="--i:1">// dynamic retrieval-augmented chatbot · learning schematic</div>
+    <h1 class="rv" style="--i:2">Creator<span class="em">RAG</span></h1>
+    <p class="lede rv" style="--i:3">Hand it a <b>YouTube video</b> and an <b>Instagram Reel</b>. It reads both, works out the engagement, and lets you <b>chat with the content</b> — answers stream in and cite the exact second they came from. This page is the X-ray: every part, who does what, what it costs, and how fast.</p>
+    <div class="stamp rv" style="--i:4">
+      <span>STATUS · <b>OPERATIONAL</b></span>
+      <span>CHAT LATENCY · <b>~2.5s</b></span>
+      <span>RUNS ON · <b>FREE TIERS</b></span>
+      <span>TESTS · <b>37 PASS</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ 00 · THE STACK ============ -->
+  <section id="stack">
+    <div class="titleblock rv">
+      <div class="no">00</div>
+      <div class="tt"><h2>The cast</h2><p>Seven moving parts. Each has exactly one job. Colors below are used consistently across every diagram on this page.</p></div>
+    </div>
+    <div class="legend rv">
+      <div class="it"><span class="swatch" style="background:var(--user);color:var(--user)"></span> <b>You</b> · Next.js</div>
+      <div class="it"><span class="swatch" style="background:var(--api);color:var(--api)"></span> <b>FastAPI</b> · backend</div>
+      <div class="it"><span class="swatch" style="background:var(--queue);color:var(--queue)"></span> <b>Redis</b> · job queue</div>
+      <div class="it"><span class="swatch" style="background:var(--apify);color:var(--apify)"></span> <b>Apify</b> · scraper</div>
+      <div class="it"><span class="swatch" style="background:var(--groq);color:var(--groq)"></span> <b>Groq</b> · Whisper</div>
+      <div class="it"><span class="swatch" style="background:var(--gemini);color:var(--gemini)"></span> <b>Gemini</b> · AI</div>
+      <div class="it"><span class="swatch" style="background:var(--store);color:var(--store)"></span> <b>Qdrant+PG</b> · storage</div>
+    </div>
+    <div class="note rv"><b>One line to anchor everything:</b> &nbsp;Groq turns <b>sound → text</b>. &nbsp;Gemini turns <b>text → meaning</b> (embeddings) and <b>meaning → answers</b> (chat). &nbsp;Qdrant stores meaning; Postgres stores facts. &nbsp;LangGraph is the conductor that calls them in order.</div>
+  </section>
+
+  <!-- ============ 01 · INGESTION ============ -->
+  <section id="ingest">
+    <div class="titleblock rv">
+      <div class="no">01</div>
+      <div class="tt"><h2>Ingestion</h2><p>The slow, run-once-per-video phase. Goal: study the videos and file the knowledge away so that chatting later is instant. Runs in the background — you don't wait for it.</p></div>
+    </div>
+
+    <div class="flow">
+      <div class="node rv" style="--c:var(--user)">
+        <div class="main"><div class="lead"><span class="tag">YOU</span><span class="num">[01.1]</span></div>
+          <h3>Submit two links</h3>
+          <div class="body">In the Next.js UI you paste a YouTube URL + an Instagram Reel URL. Browser fires <code>POST /api/videos</code>.</div></div>
+        <div class="gauge"><div class="v">instant</div><div class="l">user action</div></div>
+      </div>
+      <div class="arrow"><div class="ln"></div><div class="tx">request</div><div class="ar">▼</div></div>
+
+      <div class="node rv" style="--c:var(--api)">
+        <div class="main"><div class="lead"><span class="tag">FASTAPI</span><span class="num">[01.2]</span></div>
+          <h3>Clean the URL &amp; check "seen before?"</h3>
+          <div class="body">Normalizes the link, hashes it, looks it up in Postgres. <b>If this video was already processed it's reused</b> — zero re-work. A ready-but-old record (&gt;<code>24h</code>) is refreshed so view/like counts don't go stale.</div></div>
+        <div class="gauge"><div class="v">~5<small>ms</small></div><div class="l">db dedup</div></div>
+      </div>
+      <div class="arrow"><div class="ln"></div><div class="tx">enqueue · don't block</div><div class="ar">▼</div></div>
+
+      <div class="node rv" style="--c:var(--queue)">
+        <div class="main"><div class="lead"><span class="tag">REDIS · ARQ</span><span class="num">[01.3]</span></div>
+          <h3>Drop a ticket on the queue</h3>
+          <div class="body">Scraping + transcription is slow, so the API doesn't do it inline — it puts a job on <b>Redis</b> and replies to you immediately. A separate <b>worker</b> process grabs it. Want 1000 creators/day? Run more workers. <span class="ref">max_jobs=10 · job_timeout=600s</span></div></div>
+        <div class="gauge"><div class="v">async</div><div class="l">decoupled</div></div>
+      </div>
+      <div class="arrow"><div class="ln"></div><div class="tx">worker picks up the job</div><div class="ar">▼</div></div>
+
+      <div class="node rv" style="--c:var(--apify)">
+        <div class="main"><div class="lead"><span class="tag">APIFY</span><span class="num">[01.4]</span></div>
+          <h3>Scrape stats + thumbnail (+ maybe captions)</h3>
+          <div class="body">Runs the scraper on <b>Apify's own servers</b>, so it works even from a cloud IP that YouTube/Instagram would block. Returns <b>views, likes, comments, followers</b>, the thumbnail, and sometimes ready-made subtitles.</div></div>
+        <div class="gauge"><div class="v">~3–20<small>s</small></div><div class="l">scrape</div></div>
+      </div>
+      <div class="arrow"><div class="ln"></div><div class="tx">do we already have a transcript?</div><div class="ar">▼</div></div>
+
+      <!-- transcript decision -->
+      <div class="branch rv">
+        <div class="bh">⑂ transcript — try the free path first, transcribe only if forced to</div>
+        <div class="opt">
+          <div class="prio a">CHOICE 1<br>FREE · INSTANT</div>
+          <div class="d"><b>Captions already exist</b> (YouTube subtitles or Apify SRT) → use them as-is. They even come with timestamps. Nothing to transcribe.</div>
+          <div class="g" style="color:var(--green)">$0 · 0ms</div>
+        </div>
+        <div class="opt">
+          <div class="prio b">FALLBACK<br>GROQ WHISPER</div>
+          <div class="d"><b>No captions?</b> Download the audio (yt-dlp), send it to <b>Groq Whisper</b>, which listens and writes the text <b>with per-second timestamps</b>. <span class="ref">this is the fallback we wired up this session</span></div>
+          <div class="g" style="color:var(--green)">~40s · free</div>
+        </div>
+      </div>
+      <div class="arrow"><div class="ln"></div><div class="tx">now: text + timestamps + stats</div><div class="ar">▼</div></div>
+
+      <div class="node rv" style="--c:var(--api)">
+        <div class="main"><div class="lead"><span class="tag">FASTAPI · MATH</span><span class="num">[01.5]</span></div>
+          <h3>Engagement rate &amp; chunking</h3>
+          <div class="body"><b>engagement = (likes + comments) ÷ views × 100</b>. Then the transcript is sliced into <b>~400-token chunks with ~60-token overlap</b>, each keeping its start/end timestamp — small enough to cite a precise moment, big enough to hold a full thought.</div></div>
+        <div class="gauge"><div class="v">~10<small>ms</small></div><div class="l">cpu only</div></div>
+      </div>
+      <div class="arrow"><div class="ln"></div><div class="tx">turn each chunk into meaning</div><div class="ar">▼</div></div>
+
+      <div class="node rv" style="--c:var(--gemini)">
+        <div class="main"><div class="lead"><span class="tag">GEMINI · EMBED</span><span class="num">[01.6]</span></div>
+          <h3>Embed every chunk → a vector</h3>
+          <div class="body"><b>gemini-embedding-001</b> converts each chunk into <b>768 numbers</b> that capture its meaning. Similar meaning → similar numbers. That's what makes search-by-idea possible. Batched to keep it cheap.</div></div>
+        <div class="gauge"><div class="v">~1–2<small>s</small></div><div class="l">batched api</div></div>
+      </div>
+      <div class="arrow"><div class="ln"></div><div class="tx">file it all away</div><div class="ar">▼</div></div>
+
+      <div class="node rv" style="--c:var(--store)">
+        <div class="main"><div class="lead"><span class="tag">QDRANT + POSTGRES</span><span class="num">[01.7]</span></div>
+          <h3>Vectors → Qdrant · facts → Postgres · status = ready ✅</h3>
+          <div class="body"><b>Qdrant</b> holds the meaning-vectors (the searchable index). <b>Postgres</b> holds the plain stuff: metadata, full transcript, engagement, chat history. Point IDs are deterministic, so re-ingesting never duplicates.</div></div>
+        <div class="gauge"><div class="v">~50<small>ms</small></div><div class="l">write</div></div>
+      </div>
+    </div>
+
+    <div class="cards rv" style="margin-top:26px">
+      <div class="card kpi" style="--c:var(--green)"><span class="ic">📺</span><div class="big">~33s</div><h3>Instagram (w/ audio)</h3><p>Apify scrape → Whisper transcription → embed → store, end to end.</p></div>
+      <div class="card kpi" style="--c:var(--amber)"><span class="ic">🎬</span><div class="big">~48s</div><h3>YouTube (no captions)</h3><p>Falls back to audio download + Whisper — the slowest path, measured live.</p></div>
+      <div class="card kpi" style="--c:var(--cyan)"><span class="ic">⚡</span><div class="big">instant</div><h3>Already ingested</h3><p>Dedup hit → reused with zero scraping, transcription or embedding cost.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ 02 · CHAT ============ -->
+  <section id="chat">
+    <div class="titleblock rv">
+      <div class="no">02</div>
+      <div class="tt"><h2>Chat</h2><p>The live phase — runs on every question. Streams word-by-word like a typewriter. Here's the latency budget for a typical turn, then the step-by-step.</p></div>
+    </div>
+
+    <!-- latency budget bar -->
+    <div class="budget rv" id="budget">
+      <div class="top">
+        <div class="ttl">// latency budget · one chat turn</div>
+        <div class="total" id="totalms">≈ 2.5<small> s total</small></div>
+      </div>
+      <div class="bar" id="bar">
+        <div class="seg" style="background:var(--cyan)"    data-w="21" title="embed question">EMBED</div>
+        <div class="seg" style="background:var(--magenta)" data-w="2"  data-min title="vector search">SEARCH</div>
+        <div class="seg" style="background:var(--lg)"      data-w="7"  title="time to first token">PREFILL</div>
+        <div class="seg" style="background:var(--green)"   data-w="70" title="streaming generation">GENERATE · streams live</div>
+      </div>
+      <div class="blegend">
+        <div class="bi"><span class="swatch" style="background:var(--cyan);color:var(--cyan)"></span> Embed question <b>~535ms</b></div>
+        <div class="bi"><span class="swatch" style="background:var(--magenta);color:var(--magenta)"></span> Qdrant + re-rank <b>~30ms</b></div>
+        <div class="bi"><span class="swatch" style="background:var(--lg);color:var(--lg)"></span> First token <b>~1.7s</b></div>
+        <div class="bi"><span class="swatch" style="background:var(--green);color:var(--green)"></span> Stream rest <b>~0.3s</b></div>
+      </div>
+    </div>
+
+    <div class="flow">
+      <div class="node rv" style="--c:var(--user)">
+        <div class="main"><div class="lead"><span class="tag">YOU</span><span class="num">[02.1]</span></div>
+          <h3>Ask a question</h3>
+          <div class="body">e.g. <i>"which video has the stronger hook?"</i> Browser opens a streaming connection: <code>POST /api/chat</code> (Server-Sent Events, so text can arrive as it's written).</div></div>
+        <div class="gauge"><div class="v">0<small>ms</small></div><div class="l">submit</div></div>
+      </div>
+      <div class="arrow"><div class="ln"></div><div class="ar">▼</div></div>
+
+      <div class="node rv" style="--c:var(--api)">
+        <div class="main"><div class="lead"><span class="tag">FASTAPI · MEMORY</span><span class="num">[02.2]</span></div>
+          <h3>Load recent chat history</h3>
+          <div class="body">Pulls the <b>last 10 messages</b> of this session from Postgres so the bot has context (<i>"improve it"</i> knows what <i>"it"</i> is). Bounded on purpose — memory survives restarts but token cost stays capped. Hands off to LangGraph.</div></div>
+        <div class="gauge"><div class="v">~5<small>ms</small></div><div class="l">pg read</div></div>
+      </div>
+      <div class="arrow"><div class="ln"></div><div class="tx">enter the conductor</div><div class="ar">▼</div></div>
+
+      <!-- LANGGRAPH -->
+      <div class="lgbox rv">
+        <div class="hint">LangGraph just runs steps in a fixed order. We deliberately built a simple <b>retrieve → generate</b> line — <b>one</b> AI call — instead of a "thinking agent" that burns an extra call deciding what to do. That choice halved both cost and latency.</div>
+        <div class="flow">
+          <div class="node" style="--c:var(--gemini);background:linear-gradient(180deg,#0e1822,#101a26)">
+            <div class="main"><div class="lead"><span class="tag">STEP A · RETRIEVE</span><span class="num">gemini + qdrant</span></div>
+              <h3>Find the most relevant transcript pieces</h3>
+              <div class="body">
+                ① <b>Gemini</b> embeds your question into a vector.<br>
+                ② <b>Qdrant</b> finds the closest chunks across <b>both</b> videos (over-fetches 16).<br>
+                ③ <b>MMR re-rank</b> trims to the best 6 and drops near-duplicates — pure Python, no API cost.
+              </div></div>
+            <div class="gauge"><div class="v">~565<small>ms</small></div><div class="l">embed+search</div></div>
+          </div>
+          <div class="arrow"><div class="ln"></div><div class="tx">hand snippets to the writer</div><div class="ar">▼</div></div>
+          <div class="node" style="--c:var(--gemini);background:linear-gradient(180deg,#0e1822,#101a26)">
+            <div class="main"><div class="lead"><span class="tag">STEP B · GENERATE</span><span class="num">gemini flash-lite</span></div>
+              <h3>Write the answer, grounded &amp; cited</h3>
+              <div class="body"><b>Gemini Flash-Lite</b> receives: video stats + the retrieved snippets + your question. It writes a short reply and <b>cites the moment</b> like <code>[Video A @ 0:12]</code>, <b>streaming token-by-token</b> so you watch it appear. <span class="ref">capped ~512 tokens · streams via config passthrough</span></div></div>
+            <div class="gauge"><div class="v">~1.9<small>s</small></div><div class="l">generate</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="arrow"><div class="ln"></div><div class="tx">answer + sources stream out</div><div class="ar">▼</div></div>
+
+      <div class="node rv" style="--c:var(--store)">
+        <div class="main"><div class="lead"><span class="tag">POSTGRES</span><span class="num">[02.3]</span></div>
+          <h3>Save this turn into memory</h3>
+          <div class="body">Your question + the answer are stored so the <b>next</b> question has context. Browser renders the streamed text and the clickable source timestamps.</div></div>
+        <div class="gauge"><div class="v">~5<small>ms</small></div><div class="l">pg write</div></div>
+      </div>
+      <div class="arrow"><div class="ln"></div><div class="ar">▼</div></div>
+
+      <div class="node rv" style="--c:var(--user)">
+        <div class="main"><div class="lead"><span class="tag">YOU</span><span class="num">[02.4]</span></div>
+          <h3>Read it type out — with citations 🎉</h3>
+          <div class="body">First words appear in <b>~1.7s</b>; the rest follows immediately. Click a citation to jump to that second in the video.</div></div>
+        <div class="gauge free"><div class="v">live</div><div class="l">streamed</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 03 · RETRIEVAL DEEP DIVE ============ -->
+  <section id="retrieval">
+    <div class="titleblock rv">
+      <div class="no">03</div>
+      <div class="tt"><h2>How retrieval actually works</h2><p>The "RAG" in CreatorRAG. This is the clever bit — finding the right needle without reading the whole haystack every time.</p></div>
+    </div>
+    <div class="twocol">
+      <div class="card rv"><span class="ic">🧩</span><h3>1 · Chunking</h3><p>The transcript is cut into <b>~400-token</b> overlapping pieces (<b>~60-token</b> overlap so context isn't severed at the seam). Each chunk keeps the <b>timestamp</b> of its first and last words — that's how citations point at a moment.</p></div>
+      <div class="card rv"><span class="ic">🔢</span><h3>2 · Embeddings</h3><p>Each chunk → <b>768 numbers</b> (a vector) via Gemini. We truncate from the default 3072 dims using MRL — <span class="save">¼ the storage, near-identical quality</span> for short clips. Vectors are L2-normalized so cosine = dot product.</p></div>
+      <div class="card rv"><span class="ic">🎯</span><h3>3 · Search + filter</h3><p>Your question is embedded the same way, then Qdrant returns the nearest chunks <b>scoped to this pair's two videos</b>. A score floor (<b>0.3</b>) drops weakly-relevant junk before it ever reaches the model.</p></div>
+      <div class="card rv"><span class="ic">♻️</span><h3>4 · MMR re-rank</h3><p>We over-fetch <b>16</b>, then <b>Maximal Marginal Relevance</b> picks the final <b>6</b> balancing relevance vs. diversity (λ=0.6) — so the model sees varied evidence, not six paraphrases of the same line. Done locally; free.</p></div>
+    </div>
+    <div class="note rv"><b>Why this beats stuffing the whole transcript into the prompt:</b> it's cheaper (you send ~6 short chunks, not 20 minutes of text), faster, and more accurate (the model isn't distracted by irrelevant material). And it scales — search stays fast whether you have 50 chunks or 50 million.</div>
+  </section>
+
+  <!-- ============ 04 · ENGINEERING DECISIONS ============ -->
+  <section id="decisions">
+    <div class="titleblock rv">
+      <div class="no">04</div>
+      <div class="tt"><h2>The hard parts</h2><p>The decisions that actually carry the project — the stuff a reviewer cares about.</p></div>
+    </div>
+    <div class="cards">
+      <div class="card rv" style="--c:var(--amber)"><span class="ic">🧱</span><h3>Provider interface + fixture kill-switch</h3><p>Every source (YouTube, IG-Apify, IG-fixture) implements one <code>fetch()</code> contract. Instagram is flaky, so if Apify fails a <b>cached fixture</b> steps in — the live demo never hard-crashes. The whole pipeline is blind to which provider ran.</p></div>
+      <div class="card rv" style="--c:var(--green)"><span class="ic">🎙️</span><h3>Transcript fallback chain</h3><p>Captions → Apify SRT → <b>Groq Whisper on downloaded audio</b>. Caption-less videos used to crash with <i>"needs audio_path"</i>; now they gracefully fall to Whisper. Free path is always tried first.</p></div>
+      <div class="card rv" style="--c:var(--violet)"><span class="ic">⚙️</span><h3>Single-pass graph, not ReAct</h3><p>A tool-calling agent wastes a whole LLM round-trip deciding "I should search." Since every question needs the transcripts, we retrieve <b>unconditionally</b> — one call, ~half the latency. Still LangGraph, still cited.</p></div>
+      <div class="card rv" style="--c:var(--queue)"><span class="ic">🚦</span><h3>Queue-decoupled ingestion</h3><p>API stays snappy because slow work is pushed to Redis + an arq worker pool. Throughput scales horizontally (more workers) independent of the web tier — the 1000-creators/day story.</p></div>
+      <div class="card rv" style="--c:var(--cyan)"><span class="ic">🔑</span><h3>Key rotation + quota failover</h3><p>Multiple Gemini keys are used round-robin; on a 429 it fails over to the next key (mid-request, before any token streamed). <span class="save">3 keys ≈ 3× the free daily cap.</span></p></div>
+      <div class="card rv" style="--c:var(--store)"><span class="ic">💾</span><h3>Persistent, bounded memory</h3><p>Chat history lives in Postgres (survives restarts), but only the last 10 messages are replayed — so context cost is capped no matter how long the conversation gets.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ 05 · COST CUTTING ============ -->
+  <section id="cost">
+    <div class="titleblock rv">
+      <div class="no">05</div>
+      <div class="tt"><h2>Where the money goes (nowhere)</h2><p>The whole thing is engineered to run on free tiers. These are the deliberate cuts — the cost/scale story.</p></div>
+    </div>
+    <div class="cards">
+      <div class="card rv"><span class="ic">🔁</span><h3>Never process a video twice</h3><p>URL-deduped. Already ingested → reused. <span class="save">$0 scraping, transcription &amp; embeddings on a repeat.</span></p></div>
+      <div class="card rv"><span class="ic">📝</span><h3>Captions before Whisper</h3><p>If subtitles exist, skip transcription entirely. <span class="save">Audio→text only as a last resort.</span></p></div>
+      <div class="card rv"><span class="ic">⚡</span><h3>One AI call, not two</h3><p>Dropped the agent's "decide" round-trip. <span class="save">Halves the LLM spend per question.</span></p></div>
+      <div class="card rv"><span class="ic">✂️</span><h3>768-dim embeddings</h3><p>Truncated from 3072. <span class="save">~4× less vector storage, faster search</span>, no real quality loss.</p></div>
+      <div class="card rv"><span class="ic">🪶</span><h3>Flash-Lite + short answers</h3><p>Cheaper model, ~512-token cap. <span class="save">Fewer output tokens = lower cost &amp; quicker replies.</span></p></div>
+      <div class="card rv"><span class="ic">🔑</span><h3>Key rotation</h3><p>Several free keys, round-robin + failover. <span class="save">Multiplies the free daily quota.</span></p></div>
+      <div class="card rv"><span class="ic">🧠</span><h3>Bounded memory</h3><p>Only last 10 messages replayed. <span class="save">Per-request token cost stays flat.</span></p></div>
+      <div class="card rv"><span class="ic">🎯</span><h3>Local MMR re-rank</h3><p>Over-fetch then diversify in Python. <span class="save">Better context, zero extra API calls.</span></p></div>
+      <div class="card rv"><span class="ic">🐳</span><h3>Self-hosted stores</h3><p>Qdrant + Postgres + Redis in Docker on one droplet. <span class="save">No managed-DB bills.</span></p></div>
+    </div>
+  </section>
+
+  <!-- ============ 06 · WHO DOES WHAT ============ -->
+  <section id="who">
+    <div class="titleblock rv">
+      <div class="no">06</div>
+      <div class="tt"><h2>Cheat-sheet</h2><p>One row per service, in plain words. Tape this to your monitor.</p></div>
+    </div>
+    <table class="svc rv">
+      <tr><td><span class="chip" style="background:var(--apify)">APIFY</span></td><td>Scrapes each video — stats, thumbnail, sometimes subtitles. Runs on <i>their</i> IPs so it isn't blocked. The only paid-ish piece (free credits cover the demo).</td></tr>
+      <tr><td><span class="chip" style="background:var(--groq)">GROQ</span></td><td>Runs <b>Whisper</b>: listens to audio and produces the transcript <b>with timestamps</b>. Only when there are no captions. Free &amp; very fast.</td></tr>
+      <tr><td><span class="chip" style="background:var(--gemini)">GEMINI</span></td><td>Two jobs — <b>embeddings</b> (text → meaning-vectors) and <b>the chat answer</b> (Flash-Lite writes the cited reply). Free tier.</td></tr>
+      <tr><td><span class="chip" style="background:var(--store);color:#fff">QDRANT</span></td><td>Vector database — stores meaning-vectors, finds the closest matches to your question. Self-hosted, free.</td></tr>
+      <tr><td><span class="chip" style="background:var(--store);color:#fff">POSTGRES</span></td><td>Plain database — metadata, full transcripts, engagement, chat memory. Self-hosted, free.</td></tr>
+      <tr><td><span class="chip" style="background:var(--queue);color:#fff">REDIS</span></td><td>Job queue — lets slow ingestion run in the background. Also backs the per-IP rate limiter.</td></tr>
+      <tr><td><span class="chip" style="background:var(--lg)">LANGGRAPH</span></td><td>The conductor — runs <b>retrieve → generate</b> in order per question. Doesn't do AI itself; it coordinates Gemini + Qdrant.</td></tr>
+      <tr><td><span class="chip" style="background:var(--api);color:#fff">FASTAPI</span></td><td>The backend brain — routes, dedup, engagement math, chunking, streaming, auth + rate limit.</td></tr>
+    </table>
+  </section>
+
+  <!-- ============ 07 · KNOBS + TESTS + DEPLOY ============ -->
+  <section id="ref">
+    <div class="titleblock rv">
+      <div class="no">07</div>
+      <div class="tt"><h2>Reference rack</h2><p>The tuning knobs, the safety net, and how it ships.</p></div>
+    </div>
+
+    <div class="twocol">
+      <div>
+        <div class="ref rv" style="margin-bottom:10px">// the dials (config.py)</div>
+        <table class="params rv">
+          <tr><th>knob</th><th>value</th><th>why</th></tr>
+          <tr><td>chunk_tokens</td><td>400</td><td>holds a full thought</td></tr>
+          <tr><td>chunk_overlap</td><td>60</td><td>context across seams</td></tr>
+          <tr><td>embed_dim</td><td>768</td><td>¼ storage vs 3072</td></tr>
+          <tr><td>retrieval_k</td><td>6</td><td>final chunks to model</td></tr>
+          <tr><td>retrieval_fetch_k</td><td>16</td><td>over-fetch for MMR</td></tr>
+          <tr><td>retrieval_min_score</td><td>0.3</td><td>drop weak matches</td></tr>
+          <tr><td>mmr_lambda</td><td>0.6</td><td>relevance vs variety</td></tr>
+          <tr><td>chat_history</td><td>10</td><td>bounded memory</td></tr>
+          <tr><td>metadata_ttl</td><td>24h</td><td>refresh stale stats</td></tr>
+          <tr><td>rate_limit</td><td>30/min</td><td>per-IP abuse guard</td></tr>
+          <tr><td>max_output_tokens</td><td>512</td><td>short, fast answers</td></tr>
+        </table>
+      </div>
+      <div>
+        <div class="ref rv" style="margin-bottom:10px">// safety net · 37 tests pass</div>
+        <div class="cards" style="grid-template-columns:1fr">
+          <div class="card rv"><h3>🧪 What's covered</h3><p>URL canonicalization &amp; dedup, chunking math, engagement formula, MMR/retrieval logic, embedding key-failover, staleness TTL, provider routing, and an end-to-end integration pass. <span class="save">No network needed for the offline suite.</span></p></div>
+          <div class="card rv"><h3>🚀 How it ships</h3><p>Backend is dockerized (API + worker share one image w/ <b>ffmpeg</b>). Prod compose adds <b>Caddy</b> for automatic HTTPS. Lands on a <b>DigitalOcean droplet</b>; frontend on <b>Vercel</b>. DB ports stay private; only 80/443 are exposed.</p></div>
+          <div class="card rv"><h3>🔬 Measure it yourself</h3><p>Run <code>python -m scripts.eval_rag</code> — it sends one real question and prints the stage-by-stage breakdown (embed / search / LLM, time-to-first-token, throughput). That's where every number on this page came from.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="big">CreatorRAG</div>
+  // end of sheet · open in any browser · hover the diagram blocks<br>
+  groq hears · gemini thinks · qdrant remembers · langgraph conducts
+</footer>
+
+<script>
+  // staggered reveal on scroll
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach((e,i)=>{
+      if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  },{threshold:.12, rootMargin:'0px 0px -40px 0px'});
+  document.querySelectorAll('.rv').forEach((el,i)=>{
+    if(el.closest('.hero')){ requestAnimationFrame(()=>setTimeout(()=>el.classList.add('in'),60)); }
+    else io.observe(el);
+  });
+
+  // animate the latency budget bar when it scrolls in
+  const budget = document.getElementById('bar');
+  const bobs = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        budget.querySelectorAll('.seg').forEach(s=>{
+          s.style.width = s.dataset.w + '%';
+        });
+        bobs.unobserve(e.target);
+      }
+    });
+  },{threshold:.4});
+  bobs.observe(budget);
+</script>
+</body>
+</html>

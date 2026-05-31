@@ -183,10 +183,6 @@ export default function VideoCard({
         </button>
       )}
 
-      {m.source && (
-        <p className="mt-3 font-mono text-[10px] text-faint">{m.source}</p>
-      )}
-
       {showTranscript && (
         <TranscriptModal
           slot={slot}
