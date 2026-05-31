@@ -16,6 +16,7 @@ to the next on a quota/429 error (as long as nothing was streamed yet).
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import AsyncIterator
 
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
@@ -64,6 +65,24 @@ def _dedup_sources(collector: list[dict]) -> list[dict]:
             seen.add(key)
             out.append(c)
     return out
+
+
+# Matches the inline citations the model is told to emit, e.g. "[Video A @ 1:23]".
+_CITE_RE = re.compile(r"Video\s+([AB])\s*@\s*(\d{1,2}:\d{2})", re.IGNORECASE)
+
+
+def _cited_only(answer: str, citations: list[dict]) -> list[dict]:
+    """Show only the retrieved chunks the model actually cited inline.
+
+    Retrieval runs unconditionally, so every turn pulls transcript chunks even
+    for pure metadata questions (followers, views) the model answers from the
+    baked-in facts. Those answers contain no inline [Video X @ m:ss] reference,
+    so we surface no citation chips — instead of misleading 0:00 sources.
+    """
+    refs = {(m.group(1).upper(), m.group(2)) for m in _CITE_RE.finditer(answer or "")}
+    if not refs:
+        return []
+    return [c for c in citations if (c.get("video"), c.get("timestamp")) in refs]
 
 
 async def chat_stream(
@@ -126,7 +145,8 @@ async def chat_stream(
             if answer:
                 await db.save_message(session_id, "assistant", answer)
 
-            sources = _dedup_sources(final_state.get("citations", []) if final_state else [])
+            all_cites = _dedup_sources(final_state.get("citations", []) if final_state else [])
+            sources = _cited_only(answer, all_cites)
             yield _sse("sources", {"sources": sources})
             yield _sse("done", {})
             return  # success

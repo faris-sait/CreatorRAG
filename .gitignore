@@ -29,3 +29,4 @@ backend/tmp/
 backend/fixtures/audio/*.mp3
 backend/fixtures/audio/*.m4a
 backend/fixtures/audio/*.wav
+.vercel

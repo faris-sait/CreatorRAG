@@ -38,24 +38,32 @@ function CitationChips({
 }) {
   if (!sources?.length) return null;
   return (
-    <div className="mt-2.5 flex flex-wrap gap-1.5">
-      {sources.map((s, i) => {
-        const href = citationHref(s, videoA, videoB);
-        const color = s.video === "A" ? "var(--a)" : "var(--b)";
-        return (
-          <a
-            key={i}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={s.text}
-            className="rounded-md border px-2 py-0.5 font-mono text-[10px] transition hover:brightness-125"
-            style={{ borderColor: `${color}55`, background: `${color}14`, color }}
-          >
-            {s.video} · {s.timestamp}
-          </a>
-        );
-      })}
+    <div className="mt-3 border-t border-border-soft pt-2.5">
+      <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-faint">
+        Sources
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {sources.map((s, i) => {
+          const href = citationHref(s, videoA, videoB);
+          const color = s.video === "A" ? "var(--a)" : "var(--b)";
+          return (
+            <a
+              key={i}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={s.text}
+              className="group inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium transition hover:brightness-110"
+              style={{ borderColor: `${color}40`, background: `${color}12`, color }}
+            >
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+              Video {s.video}
+              <span className="tabular opacity-70">{s.timestamp}</span>
+              <span className="opacity-50 transition group-hover:opacity-100">↗</span>
+            </a>
+          );
+        })}
+      </div>
     </div>
   );
 }

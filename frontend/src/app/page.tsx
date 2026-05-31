@@ -170,9 +170,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="rise mt-1 flex flex-wrap items-center justify-between gap-3 border-t border-border-soft pt-5 text-xs text-faint">
-        <span>
-          Built for <span className="text-muted">CreatorJoy</span> · YouTube vs Instagram Reel
-        </span>
+        <span>YouTube vs Instagram Reel</span>
         <div className="flex gap-4">
           <a href={ARCHITECTURE_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-text">
             Architecture
