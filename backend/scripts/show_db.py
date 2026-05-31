@@ -1,4 +1,4 @@
-"""Pretty-print the CreatorRAG database — no psql required.
+"""Pretty-print the CreatoFlow database — no psql required.
 
 Usage:
     python -m scripts.show_db            # videos + pairs summary

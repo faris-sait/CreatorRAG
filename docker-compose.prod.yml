@@ -111,7 +111,7 @@ services:
     logging: *default-logging
     environment:
       # The public hostname Caddy gets a Let's Encrypt cert for (see Caddyfile).
-      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env (e.g. creatorrag.duckdns.org)}
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env (e.g. creatoflow.duckdns.org)}
     ports:
       - "80:80"
       - "443:443"

@@ -1,4 +1,4 @@
-# Local dev infrastructure for CreatorRAG.
+# Local dev infrastructure for CreatoFlow.
 # Brings up the three stateful services the app needs so the whole pipeline
 # runs end-to-end with a single `docker compose up` and zero cloud accounts.
 #

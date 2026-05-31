@@ -88,7 +88,7 @@ def build_system_prompt(video_a: dict, video_b: dict) -> str:
     b = _summarize("B", video_b.get("platform", "instagram"),
                    video_b.get("metadata", {}), video_b.get("engagement_rate"))
     return (
-        "You are CreatorRAG, an analyst helping a creator compare two short "
+        "You are CreatoFlow, an analyst helping a creator compare two short "
         "videos: Video A and Video B.\n\n"
         "Known facts about the videos:\n"
         f"- {a}\n- {b}\n\n"

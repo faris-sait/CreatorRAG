@@ -1,4 +1,4 @@
-# CreatorRAG
+# CreatoFlow
 
 Give it a YouTube video and an Instagram Reel. It pulls both transcripts and
 their stats, works out the engagement rate, and lets you chat with the content —

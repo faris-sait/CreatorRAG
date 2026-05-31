@@ -17,7 +17,7 @@ const mono = JetBrains_Mono({
 const sans = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "CreatorRAG — compare two videos",
+  title: "CreatoFlow — compare two videos",
   description: "Compare a YouTube video and an Instagram Reel with a source-citing RAG chat",
 };
 

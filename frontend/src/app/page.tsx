@@ -88,7 +88,7 @@ export default function Home() {
             creator analytics
           </div>
           <h1 className="font-display text-4xl font-extrabold leading-none tracking-tight text-text md:text-5xl">
-            Creator<span className="text-accent">RAG</span>
+            Creato<span className="text-accent">Flow</span>
           </h1>
         </div>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:max-w-sm sm:items-end">

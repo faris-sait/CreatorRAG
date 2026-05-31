@@ -1,4 +1,4 @@
-# Deploying CreatorRAG
+# Deploying CreatoFlow
 
 Backend runs as a containerised stack on a **DigitalOcean droplet** (Docker
 Compose + Caddy for automatic HTTPS). Frontend runs on **Vercel**. HTTPS on the
@@ -37,8 +37,8 @@ git push origin master
 ## 1. DuckDNS (free subdomain → droplet IP)
 
 1. Go to <https://www.duckdns.org> and sign in (GitHub/Google/etc).
-2. In **"sub domain"** type an available name, e.g. `creatorrag`, click **add domain**.
-   Your hostname is now `creatorrag.duckdns.org`.
+2. In **"sub domain"** type an available name, e.g. `creatoflow`, click **add domain**.
+   Your hostname is now `creatoflow.duckdns.org`.
 3. In the **current ip** box for that row, enter your droplet's **public IPv4**
    and click **update ip**. (Find the IP in the DO dashboard.)
 4. Copy the **token** shown at the top of the page — keep it private.
@@ -46,14 +46,14 @@ git push origin master
 Verify it resolves (from your laptop):
 
 ```bash
-dig +short creatorrag.duckdns.org    # should print the droplet IP
+dig +short creatoflow.duckdns.org    # should print the droplet IP
 ```
 
 > Optional but recommended on the droplet — auto-refresh the IP every 5 min so
 > it survives a reboot/IP change:
 > ```bash
 > mkdir -p ~/duckdns && cat > ~/duckdns/duck.sh <<'EOF'
-> echo url="https://www.duckdns.org/update?domains=creatorrag&token=YOUR_TOKEN&ip=" | curl -k -o ~/duckdns/duck.log -K -
+> echo url="https://www.duckdns.org/update?domains=creatoflow&token=YOUR_TOKEN&ip=" | curl -k -o ~/duckdns/duck.log -K -
 > EOF
 > chmod +x ~/duckdns/duck.sh
 > ( crontab -l 2>/dev/null; echo "*/5 * * * * ~/duckdns/duck.sh >/dev/null 2>&1" ) | crontab -
@@ -87,8 +87,8 @@ sudo ufw status
 ## 3. Clone + configure
 
 ```bash
-git clone https://github.com/faris-sait/CreatorRAG.git ~/creatorrag
-cd ~/creatorrag
+git clone https://github.com/faris-sait/CreatorRAG.git ~/creatoflow
+cd ~/creatoflow
 cp .env.example .env
 nano .env        # fill in the values below
 ```
@@ -121,10 +121,10 @@ QDRANT_URL=http://qdrant:6333
 QDRANT_COLLECTION=video_chunks
 
 # --- public hostname for Caddy's cert ---
-SITE_ADDRESS=creatorrag.duckdns.org
+SITE_ADDRESS=creatoflow.duckdns.org
 
 # --- CORS: set after the Vercel URL exists (step 6). A placeholder is fine now ---
-BACKEND_CORS_ORIGINS=https://creatorrag.vercel.app
+BACKEND_CORS_ORIGINS=https://creatoflow.vercel.app
 ```
 
 > `POSTGRES_PASSWORD` and the password inside `DATABASE_URL` **must match** —
@@ -150,7 +150,7 @@ Caddy logs a line like `certificate obtained successfully` within ~30s once DNS
 ## 5. Verify the backend
 
 ```bash
-curl -s https://creatorrag.duckdns.org/api/health | python3 -m json.tool
+curl -s https://creatoflow.duckdns.org/api/health | python3 -m json.tool
 ```
 
 Expect `"status": "ok"` with `postgres: ok` and a `qdrant_chunks` count. A valid
@@ -172,7 +172,7 @@ Set the production env var (dashboard → Settings → Environment Variables, or
 
 ```bash
 npx vercel env add NEXT_PUBLIC_API_URL production
-# value: https://creatorrag.duckdns.org   (base URL, NO trailing /api)
+# value: https://creatoflow.duckdns.org   (base URL, NO trailing /api)
 ```
 
 Then deploy production:
@@ -181,7 +181,7 @@ Then deploy production:
 npx vercel --prod
 ```
 
-Copy the resulting URL (e.g. `https://creatorrag.vercel.app`).
+Copy the resulting URL (e.g. `https://creatoflow.vercel.app`).
 
 ---
 
@@ -190,7 +190,7 @@ Copy the resulting URL (e.g. `https://creatorrag.vercel.app`).
 Back on the droplet, set the real Vercel URL and restart the app (no rebuild):
 
 ```bash
-cd ~/creatorrag
+cd ~/creatoflow
 nano .env        # BACKEND_CORS_ORIGINS=https://<your-vercel-url>
 make prod-restart
 ```
@@ -202,7 +202,7 @@ Open the Vercel URL, paste a YouTube + Instagram Reel pair, and chat. Done.
 ## Redeploying later
 
 ```bash
-cd ~/creatorrag && make prod-deploy     # git pull + rebuild + restart + ps
+cd ~/creatoflow && make prod-deploy     # git pull + rebuild + restart + ps
 ```
 
 ## Troubleshooting

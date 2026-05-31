@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
     await db.close_pool()
 
 
-app = FastAPI(title="CreatorRAG API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="CreatoFlow API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,4 +48,4 @@ app.include_router(chat.router)
 
 @app.get("/")
 async def root() -> dict:
-    return {"name": "CreatorRAG API", "docs": "/docs"}
+    return {"name": "CreatoFlow API", "docs": "/docs"}
