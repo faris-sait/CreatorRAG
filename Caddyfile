@@ -1,11 +1,12 @@
 # Caddy auto-provisions a Let's Encrypt cert for this hostname and terminates
 # TLS, then reverse-proxies to the API container over the internal network.
 #
-# Replace the hostname with your real DuckDNS subdomain (or any domain whose
-# A record points at this droplet). flush_interval -1 disables response
-# buffering so the streaming /chat (SSE) endpoint flushes tokens immediately.
+# The hostname comes from SITE_ADDRESS in .env (e.g. creatorrag.duckdns.org) so
+# the same tracked file works on any host — no per-droplet edits. flush_interval
+# -1 disables response buffering so the streaming /chat (SSE) endpoint flushes
+# tokens immediately.
 
-creatorrag.duckdns.org {
+{$SITE_ADDRESS} {
 	reverse_proxy api:8000 {
 		flush_interval -1
 	}

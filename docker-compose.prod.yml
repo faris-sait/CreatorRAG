@@ -78,9 +78,10 @@ services:
       qdrant:
         condition: service_healthy
     healthcheck:
-      # /health is a pure liveness probe (no external calls). python is in the
-      # image, so no need to add curl.
-      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)\""]
+      # The /api/health route always returns 200 while the app is up (it reports
+      # degraded in the body if a dependency is down), so this is an app-liveness
+      # probe. python is in the image, so no need to add curl.
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status==200 else 1)\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -108,6 +109,9 @@ services:
     image: caddy:2-alpine
     restart: unless-stopped
     logging: *default-logging
+    environment:
+      # The public hostname Caddy gets a Let's Encrypt cert for (see Caddyfile).
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env (e.g. creatorrag.duckdns.org)}
     ports:
       - "80:80"
       - "443:443"
