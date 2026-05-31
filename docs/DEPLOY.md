@@ -84,16 +84,22 @@ sudo ufw status
 
 ---
 
-## 3. Clone + configure
+## 3. Get the code + configure
 
 ```bash
+# Fresh droplet: clone it. Already developing on this box? Skip the clone, just cd into the repo.
 git clone https://github.com/faris-sait/CreatorRAG.git ~/creatoflow
 cd ~/creatoflow
-cp .env.example .env
-nano .env        # fill in the values below
+cp .env.example .env.prod
+nano .env.prod        # fill in the values below
 ```
 
-Set these in `.env` (note: **hosts are docker service names, not localhost**):
+> Prod uses its **own** env file (`.env.prod`) and Compose project name
+> (`-p creatoflow`, baked into the `make prod-*` targets), so it never clobbers a
+> local dev `.env` or the dev DB containers that may already be running on the
+> same machine.
+
+Set these in `.env.prod` (note: **hosts are docker service names, not localhost**):
 
 ```ini
 # --- secrets (your own keys) ---
@@ -191,7 +197,7 @@ Back on the droplet, set the real Vercel URL and restart the app (no rebuild):
 
 ```bash
 cd ~/creatoflow
-nano .env        # BACKEND_CORS_ORIGINS=https://<your-vercel-url>
+nano .env.prod        # BACKEND_CORS_ORIGINS=https://<your-vercel-url>
 make prod-restart
 ```
 

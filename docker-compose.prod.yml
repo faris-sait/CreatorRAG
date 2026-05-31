@@ -69,7 +69,7 @@ services:
     image: creatorrag-backend:latest
     restart: unless-stopped
     logging: *default-logging
-    env_file: .env
+    env_file: .env.prod
     depends_on:
       postgres:
         condition: service_healthy
@@ -94,7 +94,7 @@ services:
     restart: unless-stopped
     logging: *default-logging
     command: arq app.pipeline.worker.WorkerSettings
-    env_file: .env
+    env_file: .env.prod
     # Give in-flight ingests a moment to finish on deploy/restart before SIGKILL.
     stop_grace_period: 30s
     depends_on:

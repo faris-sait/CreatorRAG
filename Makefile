@@ -1,7 +1,9 @@
 .PHONY: infra infra-down api worker web test install \
         prod-up prod-down prod-logs prod-ps prod-restart prod-deploy prod-db prod-db-reset
 
-COMPOSE_PROD = docker compose -f docker-compose.prod.yml
+# Prod runs under its OWN project name (-p creatoflow) and env file (.env.prod)
+# so it stays fully isolated from the local dev DB stack on this same box.
+COMPOSE_PROD = docker compose -p creatoflow --env-file .env.prod -f docker-compose.prod.yml
 
 # Bring up Redis + Qdrant + Postgres
 infra:
