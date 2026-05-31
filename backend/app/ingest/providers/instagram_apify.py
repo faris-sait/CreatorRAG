@@ -57,7 +57,9 @@ class InstagramApifyProvider(VideoProvider):
             likes=it.get("likesCount"),
             comments=it.get("commentsCount"),
             hashtags=it.get("hashtags") or _hashtags_from_caption(caption),
-            upload_date=it.get("timestamp"),
+            # Apify returns a full ISO timestamp (2026-04-05T18:03:53.000Z);
+            # trim to YYYY-MM-DD for consistency with the YouTube provider.
+            upload_date=(it.get("timestamp") or "")[:10] or None,
             duration=int(it["videoDuration"]) if it.get("videoDuration") else None,
             thumbnail=it.get("displayUrl"),
             audio_url=it.get("videoUrl"),  # direct CDN media → Whisper

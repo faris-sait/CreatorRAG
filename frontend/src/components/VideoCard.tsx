@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { VideoState } from "@/lib/types";
-import { compact, duration } from "@/lib/format";
+import { compact, dateOnly, duration } from "@/lib/format";
 import { videoThumbnail } from "@/lib/api";
 import StatusBadge from "./StatusBadge";
 import TranscriptModal from "./TranscriptModal";
@@ -155,7 +155,7 @@ export default function VideoCard({
             <Stat label="Likes" value={compact(m.likes)} />
             <Stat label="Comments" value={compact(m.comments)} />
             <Stat label="Duration" value={duration(m.duration)} />
-            <Stat label="Uploaded" value={m.upload_date || "—"} />
+            <Stat label="Uploaded" value={dateOnly(m.upload_date)} />
             <Stat label="Chunks" value={String(video.num_chunks ?? "—")} />
           </div>
 
