@@ -26,6 +26,15 @@ def youtube_id(url: str) -> str | None:
     return m.group(1) if m else None
 
 
+def is_short(url: str) -> bool:
+    """True for a YouTube Shorts URL (youtube.com/shorts/<id>).
+
+    Must be checked on the *original* pasted URL — canonical_url() rewrites
+    Shorts to the /watch?v= form and loses this signal.
+    """
+    return "/shorts/" in urlsplit(url).path.lower()
+
+
 def instagram_shortcode(url: str) -> str | None:
     m = IG_CODE_RE.search(url)
     return m.group(1) if m else None

@@ -53,11 +53,16 @@ async def _dead_letter(video_id: str, url: str, error: str) -> None:
 
 
 async def ingest_video(
-    ctx: dict, video_id: str, url: str, platform: str, exact_yt: bool = False
+    ctx: dict,
+    video_id: str,
+    url: str,
+    platform: str,
+    exact_yt: bool = False,
+    is_short: bool = False,
 ) -> dict:
     try:
         await db.set_status(video_id, "fetching")
-        provider = get_provider(url, youtube_exact=exact_yt)
+        provider = get_provider(url, youtube_exact=exact_yt, is_short=is_short)
         data = await provider.fetch(url)
 
         # Persist the thumbnail bytes now — CDN URLs are time-signed and expire.
@@ -66,27 +71,37 @@ async def ingest_video(
             if img:
                 await db.save_thumbnail(video_id, img[0], img[1])
 
-        # transcript: captions if provided, else Whisper on audio
-        segments = data.transcript_segments
-        if not segments:
-            await db.set_status(video_id, "transcribing")
-            segments = await transcribe(
-                audio_path=data.audio_path, audio_url=data.audio_url
-            )
-        if not segments:
-            raise RuntimeError("No transcript could be produced for this video")
+        if is_short:
+            # YouTube Shorts: metadata + engagement rate only. Skip transcription
+            # entirely (no captions/Whisper) — they're short, often caption-less,
+            # and the audio-download fallback is slow + blocked on datacenter IPs.
+            segments: list = []
+        else:
+            # transcript: captions if provided, else Whisper on audio
+            segments = data.transcript_segments
+            if not segments:
+                await db.set_status(video_id, "transcribing")
+                segments = await transcribe(
+                    audio_path=data.audio_path, audio_url=data.audio_url
+                )
+            if not segments:
+                raise RuntimeError("No transcript could be produced for this video")
 
-        transcript = full_text(segments)
+        transcript = full_text(segments) if segments else ""
         rate = engagement_rate(data.likes, data.comments, data.views)
 
-        await db.set_status(video_id, "embedding")
-        chunks = chunk_segments(segments)
-        texts = [c["text"] for c in chunks]
-        vectors = await asyncio.to_thread(embed_documents, texts)
-        await qdrant_store.upsert_chunks(video_id, platform, chunks, vectors)
+        chunks: list = []
+        if segments:
+            await db.set_status(video_id, "embedding")
+            chunks = chunk_segments(segments)
+            texts = [c["text"] for c in chunks]
+            vectors = await asyncio.to_thread(embed_documents, texts)
+            await qdrant_store.upsert_chunks(video_id, platform, chunks, vectors)
 
         meta = data.metadata_dict()
         meta["engagement_rate"] = rate
+        if is_short:
+            meta["is_short"] = True
         await db.save_ingest_result(
             video_id,
             metadata=meta,
@@ -94,7 +109,10 @@ async def ingest_video(
             transcript=transcript,
             num_chunks=len(chunks),
         )
-        log.info("Ingested %s (%s) — %d chunks", video_id, platform, len(chunks))
+        log.info(
+            "Ingested %s (%s%s) — %d chunks",
+            video_id, platform, " short" if is_short else "", len(chunks),
+        )
         return {"video_id": video_id, "status": "ready", "chunks": len(chunks)}
     except Exception as e:  # noqa: BLE001
         tries = ctx.get("job_try", 1)

@@ -66,9 +66,16 @@ class _YouTubeApifyWithFallback(VideoProvider):
         return data
 
 
-def get_provider(url: str, youtube_exact: bool = False) -> VideoProvider:
+def get_provider(
+    url: str, youtube_exact: bool = False, is_short: bool = False
+) -> VideoProvider:
     platform = detect_platform(url)
     if platform == "youtube":
+        # Shorts: metadata + engagement only (the pipeline skips transcription),
+        # so use the Apify metadata path directly and NEVER the yt-dlp/Whisper
+        # fallback — that fallback is the slow, datacenter-IP-blocked step.
+        if is_short and settings.has_apify:
+            return YouTubeApifyProvider()
         # youtube_exact forces the SRT actor (exact timestamps, slower).
         use_apify = settings.has_apify and (settings.youtube_use_apify or youtube_exact)
         if use_apify:

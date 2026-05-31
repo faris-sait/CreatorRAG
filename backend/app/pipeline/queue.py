@@ -24,7 +24,11 @@ async def close_queue() -> None:
 
 
 async def enqueue_ingest(
-    video_id: str, url: str, platform: str, exact_yt: bool = False
+    video_id: str,
+    url: str,
+    platform: str,
+    exact_yt: bool = False,
+    is_short: bool = False,
 ) -> None:
     q = await get_queue()
     job_id = f"ingest:{video_id}"
@@ -37,5 +41,5 @@ async def enqueue_ingest(
     except Exception:
         pass
     await q.enqueue_job(
-        "ingest_video", video_id, url, platform, exact_yt, _job_id=job_id
+        "ingest_video", video_id, url, platform, exact_yt, is_short, _job_id=job_id
     )

@@ -76,7 +76,7 @@ def _run(url: str) -> dict:
         run_input={
             "startUrls": [{"url": url}],
             "maxResults": 1,
-            "maxResultsShorts": 0,
+            "maxResultsShorts": 1,
             "maxResultStreams": 0,
             "subtitles": True,
             "downloadSubtitles": True,

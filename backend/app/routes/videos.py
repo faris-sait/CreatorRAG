@@ -18,6 +18,7 @@ from ..ingest.providers.factory import canonical_url, detect_platform
 from ..media import fetch_image, host_allowed
 from ..pipeline.queue import enqueue_ingest
 from ..security import rate_limit, require_api_key
+from ..urls import is_short
 
 router = APIRouter(prefix="/api", tags=["videos"])
 
@@ -60,6 +61,8 @@ async def _ingest_slot(
 ) -> dict:
     try:
         platform = detect_platform(url)
+        # Detect Shorts on the ORIGINAL url before canonical_url() strips /shorts/.
+        short = platform == "youtube" and is_short(url)
         url = canonical_url(url)  # scrub messy/pasted input to a clean URL
     except ValueError as e:
         # Unknown/malformed host → clean 422 (flows through CORS) instead of a
@@ -74,7 +77,7 @@ async def _ingest_slot(
     # ready, non-stale video is reused instantly with zero re-embedding.
     if created or video["status"] not in _TERMINAL_OK or _is_stale(video):
         await db.set_status(video["id"], "queued")
-        await enqueue_ingest(video["id"], url, platform, exact_yt=exact_yt)
+        await enqueue_ingest(video["id"], url, platform, exact_yt=exact_yt, is_short=short)
     return video
 
 
