@@ -185,9 +185,8 @@ serve them through the backend. The expensive endpoints have optional API-key
 auth and per-IP rate limiting, off by default for local dev. On the frontend
 there are loading skeletons, a retry button on failed cards, a new-chat button,
 markdown answers, and citation chips that deep-link to the video at the right
-second. There are around 40 tests (unit plus a couple of integration ones), and a
-GitHub Actions pipeline that lints, type-checks, runs the tests against real
-service containers, and builds the frontend.
+second. There are around 40 tests and a GitHub Actions pipeline that gates every
+push and PR — both covered under Testing below.
 
 ---
 
@@ -329,6 +328,15 @@ CREATORRAG_INTEGRATION=1 pytest         # also hit live Postgres/Qdrant
 The tests cover the fiddly bits: engagement-rate edge cases, chunk-boundary
 timestamps, URL dedup and canonicalization, the MMR rerank, the TTL logic, key
 rotation and failover, and the provider routing and fallback.
+
+CI runs on every push and pull request (`.github/workflows/ci.yml`), in two
+parallel jobs. The backend job spins up real Postgres, Redis and Qdrant as
+service containers, lints with Ruff, type-checks with mypy (non-blocking on
+purpose — I didn't want types gating a screening build), and runs the full
+suite with `CREATORRAG_INTEGRATION=1` so the integration tests actually hit
+those live services rather than mocks. The frontend job type-checks with `tsc`
+and runs a real `next build`, so a broken build can't merge. It's the same setup
+I run locally, just enforced.
 
 ---
 
