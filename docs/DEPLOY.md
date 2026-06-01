@@ -1,16 +1,17 @@
 # Deploying CreatoFlow
 
-Backend runs as a containerised stack on a **DigitalOcean droplet** (Docker
-Compose + Caddy for automatic HTTPS). Frontend runs on **Vercel**. HTTPS on the
-backend is mandatory — a Vercel (HTTPS) page cannot call an `http://` origin
-(mixed-content block), so we give the droplet a real cert via a free
-**DuckDNS** hostname.
+Backend runs as a containerised stack on a **VPS** (Docker Compose + Caddy for
+automatic HTTPS). Frontend runs on **Vercel**. HTTPS on the backend is mandatory
+— a Vercel (HTTPS) page cannot call an `http://` origin (mixed-content block), so
+we give the box a real cert. The live deployment points the subdomain
+**`creatoflow.vaulter.in`** (a GoDaddy-managed A record) at the server's public
+IP; any domain you control works the same way.
 
 ```
 Browser ──HTTPS──▶ Vercel (Next.js)
    │
-   └──HTTPS──▶ <you>.duckdns.org ─▶ Caddy :443 ─▶ api:8000 ─▶ redis / qdrant / postgres
-                                                   worker (arq) ┘
+   └──HTTPS──▶ creatoflow.vaulter.in ─▶ Caddy :443 ─▶ api:8000 ─▶ redis / qdrant / postgres
+                                                       worker (arq) ┘
 ```
 
 Deploy order matters: **DNS must resolve and ports 80/443 must be open before
@@ -34,30 +35,28 @@ git push origin master
 
 ---
 
-## 1. DuckDNS (free subdomain → droplet IP)
+## 1. DNS (subdomain → server IP)
 
-1. Go to <https://www.duckdns.org> and sign in (GitHub/Google/etc).
-2. In **"sub domain"** type an available name, e.g. `creatoflow`, click **add domain**.
-   Your hostname is now `creatoflow.duckdns.org`.
-3. In the **current ip** box for that row, enter your droplet's **public IPv4**
-   and click **update ip**. (Find the IP in the DO dashboard.)
-4. Copy the **token** shown at the top of the page — keep it private.
+Point a subdomain you control at the server's public IPv4 with a plain **A
+record**. The live deployment uses `creatoflow.vaulter.in` on GoDaddy:
 
-Verify it resolves (from your laptop):
+1. In your DNS provider (GoDaddy here), open the domain's DNS records.
+2. Add an **A** record: host/name `creatoflow`, value = the server's **public
+   IPv4**, TTL the default (e.g. 600s). No proxy/CDN in front — Caddy needs to
+   answer the Let's Encrypt challenge directly on this IP.
+3. Save. A real registrar's nameservers resolve in seconds to a few minutes.
+
+Verify it resolves to the server before going further (from your laptop):
 
 ```bash
-dig +short creatoflow.duckdns.org    # should print the droplet IP
+dig +short creatoflow.vaulter.in    # should print the server's public IP
 ```
 
-> Optional but recommended on the droplet — auto-refresh the IP every 5 min so
-> it survives a reboot/IP change:
-> ```bash
-> mkdir -p ~/duckdns && cat > ~/duckdns/duck.sh <<'EOF'
-> echo url="https://www.duckdns.org/update?domains=creatoflow&token=YOUR_TOKEN&ip=" | curl -k -o ~/duckdns/duck.log -K -
-> EOF
-> chmod +x ~/duckdns/duck.sh
-> ( crontab -l 2>/dev/null; echo "*/5 * * * * ~/duckdns/duck.sh >/dev/null 2>&1" ) | crontab -
-> ```
+> A managed registrar (GoDaddy/Cloudflare/etc.) is worth it over a free dynamic
+> DNS service: this project originally ran on DuckDNS and its authoritative
+> nameservers were slow/flaky on a cache-miss (multi-second stalls before the
+> app even got the request). Moving to a normal domain dropped resolution to
+> ~milliseconds.
 
 ---
 
@@ -127,7 +126,7 @@ QDRANT_URL=http://qdrant:6333
 QDRANT_COLLECTION=video_chunks
 
 # --- public hostname for Caddy's cert ---
-SITE_ADDRESS=creatoflow.duckdns.org
+SITE_ADDRESS=creatoflow.vaulter.in
 
 # --- CORS: set after the Vercel URL exists (step 6). A placeholder is fine now ---
 BACKEND_CORS_ORIGINS=https://creatoflow.vercel.app
@@ -156,7 +155,7 @@ Caddy logs a line like `certificate obtained successfully` within ~30s once DNS
 ## 5. Verify the backend
 
 ```bash
-curl -s https://creatoflow.duckdns.org/api/health | python3 -m json.tool
+curl -s https://creatoflow.vaulter.in/api/health | python3 -m json.tool
 ```
 
 Expect `"status": "ok"` with `postgres: ok` and a `qdrant_chunks` count. A valid
@@ -178,7 +177,7 @@ Set the production env var (dashboard → Settings → Environment Variables, or
 
 ```bash
 npx vercel env add NEXT_PUBLIC_API_URL production
-# value: https://creatoflow.duckdns.org   (base URL, NO trailing /api)
+# value: https://creatoflow.vaulter.in   (base URL, NO trailing /api)
 ```
 
 Then deploy production:
