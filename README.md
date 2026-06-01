@@ -185,7 +185,7 @@ serve them through the backend. The expensive endpoints have optional API-key
 auth and per-IP rate limiting, off by default for local dev. On the frontend
 there are loading skeletons, a retry button on failed cards, a new-chat button,
 markdown answers, and citation chips that deep-link to the video at the right
-second. There are about 30 tests (unit plus a couple of integration ones), and a
+second. There are around 40 tests (unit plus a couple of integration ones), and a
 GitHub Actions pipeline that lints, type-checks, runs the tests against real
 service containers, and builds the frontend.
 
@@ -244,6 +244,22 @@ clear the free tier, keep Gemini Flash for chat, and treat Instagram as the
 dependency to cache and route around. The first thing I'd change with a budget
 is moving transcription off Groq's free tier onto a GPU, and the Gemini keys
 onto a paid plan.
+
+What breaks first if you push this to 10,000 creators/day? Not the code — the
+single box. Today the whole backend (api, worker, and all three databases) runs
+as one Docker stack on one VPS, which is right for a demo and wrong for that
+volume. The failure order is roughly: third-party rate limits and quotas go
+first (Apify, Groq, Gemini — already the reason for key rotation and graceful
+fallbacks), then the shared box becomes the bottleneck because the worker pool
+contends with Postgres and Qdrant for the same CPU and disk. The fix is
+mechanical and the architecture is already shaped for it: the queue means you
+scale ingestion by running more worker containers, so you peel the workers off
+onto their own machines, move Postgres and Qdrant to managed/clustered services
+(Qdrant is a single node here — fine for a few hundred thousand vectors, not for
+tens of millions), and put the API behind a load balancer. Nothing in the design
+has to change; you're just unbundling the one box into tiers. The thing that
+stays a hard dependency at any scale is Instagram — which is exactly why it sits
+behind a provider interface with caching and a fixture fallback.
 
 ---
 
