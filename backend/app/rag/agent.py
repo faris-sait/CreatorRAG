@@ -21,6 +21,7 @@ that to a single LLM call and roughly halves time-to-first-token.
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import Any, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -65,6 +66,71 @@ def _fmt_ts(seconds) -> str:
         return "?"
     s = int(seconds)
     return f"{s // 60}:{s % 60:02d}"
+
+
+# A question about the opening ("compare the hooks in the first 5 seconds") needs
+# the OPENING chunks, not whatever ranks highest against the meta-phrasing. We
+# detect that intent and convert it to a max_start time window so retrieval is
+# constrained to the start of each video. An explicit number wins; a bare
+# "hook"/"opening" with no number falls back to a default window.
+_FIRST_MIN_RE = re.compile(r"\bfirst\s+(\d+)\s*(?:minutes?|mins?)\b", re.IGNORECASE)
+_FIRST_SEC_RE = re.compile(r"\b(?:first|opening|initial)\s+(\d+)\s*(?:seconds?|secs?)\b", re.IGNORECASE)
+_HOOK_RE = re.compile(r"\b(?:hooks?|opening|openings|intro|introduction|beginning|first few seconds)\b", re.IGNORECASE)
+
+
+def time_window_seconds(question: str) -> float | None:
+    """Max start-time (seconds) for an opening/hook question, or None.
+
+    Returns the cutoff for `qdrant_store.search(max_start=...)`:
+      "first 5 seconds"  → 5.0     "first 2 minutes" → 120.0
+      "compare the hooks" → default window     anything else → None
+    """
+    q = question or ""
+    m = _FIRST_MIN_RE.search(q)
+    if m:
+        return float(m.group(1)) * 60.0
+    m = _FIRST_SEC_RE.search(q)
+    if m:
+        return float(m.group(1))
+    if _HOOK_RE.search(q):
+        return float(settings.hook_window_seconds)
+    return None
+
+
+async def _retrieve_context(
+    question: str, a_id: str, b_id: str, id_to_slot: dict[str, str]
+) -> tuple[str, list[dict]]:
+    """Embed the question and pull grounded transcript excerpts + citations.
+
+    If the question is about the opening (hook / "first N seconds"), constrain the
+    search to chunks that start within that window and drop the relevance floor —
+    the opening is already hard-selected by time, and the meta-phrasing scores
+    too low to survive the normal floor."""
+    qvec = await asyncio.to_thread(embed_query, question)
+    kwargs: dict[str, Any] = {"video_ids": [a_id, b_id], "limit": settings.retrieval_k}
+    mw = time_window_seconds(question)
+    if mw is not None:
+        kwargs["max_start"] = mw
+        kwargs["score_threshold"] = 0.0
+    hits = await qdrant_store.search(qvec, **kwargs)
+
+    lines: list[str] = []
+    citations: list[dict] = []
+    for h in hits:
+        slot = id_to_slot.get(h.get("video_id"), "?")
+        ts = _fmt_ts(h.get("start"))
+        citations.append({
+            "video": slot,
+            "chunk_index": h.get("chunk_index"),
+            "start": h.get("start"),
+            "end": h.get("end"),
+            "timestamp": ts,
+            "text": h.get("text"),
+            "score": round(h.get("score", 0), 4),
+        })
+        lines.append(f"[Video {slot} @ {ts}] {h.get('text')}")
+    context = "\n\n".join(lines) if lines else "No relevant transcript excerpts found."
+    return context, citations
 
 
 def _summarize(slot: str, platform: str, meta: dict[str, Any], rate) -> str:
@@ -129,26 +195,9 @@ def build_graph(video_a: dict, video_b: dict, slot_map: dict[str, str], api_key:
     system = build_system_prompt(video_a, video_b)
 
     async def retrieve(state: RAGState) -> dict:
-        qvec = await asyncio.to_thread(embed_query, state["question"])
-        hits = await qdrant_store.search(
-            qvec, video_ids=[a_id, b_id], limit=settings.retrieval_k
+        context, citations = await _retrieve_context(
+            state["question"], a_id, b_id, id_to_slot
         )
-        lines: list[str] = []
-        citations: list[dict] = []
-        for h in hits:
-            slot = id_to_slot.get(h.get("video_id"), "?")
-            ts = _fmt_ts(h.get("start"))
-            citations.append({
-                "video": slot,
-                "chunk_index": h.get("chunk_index"),
-                "start": h.get("start"),
-                "end": h.get("end"),
-                "timestamp": ts,
-                "text": h.get("text"),
-                "score": round(h.get("score", 0), 4),
-            })
-            lines.append(f"[Video {slot} @ {ts}] {h.get('text')}")
-        context = "\n\n".join(lines) if lines else "No relevant transcript excerpts found."
         return {"context": context, "citations": citations}
 
     async def generate(state: RAGState, config: RunnableConfig) -> dict:

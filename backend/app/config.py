@@ -82,6 +82,7 @@ class Settings(BaseSettings):
     retrieval_fetch_k: int = 16         # over-fetch before MMR rerank
     retrieval_min_score: float = 0.3    # drop weakly-relevant chunks (cosine)
     retrieval_mmr_lambda: float = 0.6   # MMR: relevance vs diversity (1=pure relevance)
+    hook_window_seconds: float = 15.0   # "the hook/opening" (no explicit time) → first N seconds
 
     # Conversation memory (persisted in Postgres, replayed bounded)
     chat_history_messages: int = 10     # how many prior messages to replay
